@@ -1,0 +1,37 @@
+pipeline {
+  agent any
+  stages {
+    stage('Docker Build') {
+      steps {
+        sh "docker build  . -t suhad/freightos:${env.BUILD_NUMBER}"
+      }
+    }
+
+
+/*
+stages {
+    stage('test') {
+       
+    }
+    }
+
+*/
+     
+    stage('Apply Kubernetes Files') {
+      steps {
+          withKubeConfig([credentialsId: 'kubeconfig']) {
+          sh 'cat deployment.yaml | sed "s/{{BUILD_NUMBER}}/$BUILD_NUMBER/g" | kubectl apply -f -'
+          sh 'kubectl apply -f service.yaml'
+        }
+      }
+  }
+}
+post {
+    success {
+      slackSend(message: "freightos Pipeline is successfully completed.")
+    }
+    failure {
+      slackSend(message: "freightos Pipeline failed. Please check the logs.")
+    }
+}
+}
